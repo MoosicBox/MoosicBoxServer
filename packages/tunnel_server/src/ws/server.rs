@@ -579,12 +579,13 @@ impl ChatServerHandle {
 
         // unwrap: chat server should not have been dropped
         self.cmd_tx
-            .send(Command::Connect {
+            .send_async(Command::Connect {
                 conn_tx,
                 res_tx,
                 client_id: client_id.to_string(),
                 sender,
             })
+            .await
             .unwrap();
 
         // unwrap: chat server does not drop out response channel
@@ -595,10 +596,11 @@ impl ChatServerHandle {
     pub async fn send_message(&self, conn: ConnId, msg: impl Into<String>) {
         // unwrap: chat server should not have been dropped
         self.cmd_tx
-            .send(Command::Message {
+            .send_async(Command::Message {
                 msg: msg.into(),
                 conn,
             })
+            .await
             .unwrap();
     }
 
@@ -611,35 +613,45 @@ impl ChatServerHandle {
         let request_id = thread_rng().gen::<usize>();
 
         self.cmd_tx
-            .send(Command::WsRequest {
+            .send_async(Command::WsRequest {
                 request_id,
                 conn_id,
                 client_id: client_id.to_string(),
                 body: msg.into(),
             })
+            .await
             .unwrap();
         Ok(())
     }
 
     pub async fn ws_message(&self, message: TunnelWsResponse) -> Result<(), WsRequestError> {
-        self.cmd_tx.send(Command::WsMessage { message }).unwrap();
+        self.cmd_tx
+            .send_async(Command::WsMessage { message })
+            .await
+            .unwrap();
 
         Ok(())
     }
 
     pub async fn ws_response(&self, response: TunnelWsResponse) -> Result<(), WsRequestError> {
-        self.cmd_tx.send(Command::WsResponse { response }).unwrap();
+        self.cmd_tx
+            .send_async(Command::WsResponse { response })
+            .await
+            .unwrap();
 
         Ok(())
     }
 
     /// Unregister message sender and broadcast disconnection message to current room.
-    pub fn disconnect(&self, conn: ConnId) {
+    pub async fn disconnect(&self, conn: ConnId) {
         // unwrap: chat server should not have been dropped
-        self.cmd_tx.send(Command::Disconnect { conn }).unwrap();
+        self.cmd_tx
+            .send_async(Command::Disconnect { conn })
+            .await
+            .unwrap();
     }
 
-    pub fn request_start(
+    pub async fn request_start(
         &self,
         request_id: usize,
         sender: UnboundedSender<TunnelResponse>,
@@ -647,24 +659,27 @@ impl ChatServerHandle {
         abort_request_token: CancellationToken,
     ) {
         self.cmd_tx
-            .send(Command::RequestStart {
+            .send_async(Command::RequestStart {
                 request_id,
                 sender,
                 headers_sender,
                 abort_request_token,
             })
+            .await
             .unwrap();
     }
 
-    pub fn request_end(&self, request_id: usize) {
+    pub async fn request_end(&self, request_id: usize) {
         self.cmd_tx
-            .send(Command::RequestEnd { request_id })
+            .send_async(Command::RequestEnd { request_id })
+            .await
             .unwrap();
     }
 
-    pub fn response(&self, conn_id: ConnId, response: TunnelResponse) {
+    pub async fn response(&self, conn_id: ConnId, response: TunnelResponse) {
         self.cmd_tx
-            .send(Command::Response { conn_id, response })
+            .send_async(Command::Response { conn_id, response })
+            .await
             .unwrap();
     }
 

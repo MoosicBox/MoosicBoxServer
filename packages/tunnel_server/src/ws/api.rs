@@ -24,7 +24,7 @@ pub async fn websocket(
     query: web::Query<ConnectRequest>,
     _: SignatureAuthorized,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let chat_server = CHAT_SERVER_HANDLE.read().unwrap().as_ref().unwrap().clone();
+    let chat_server = CHAT_SERVER_HANDLE.read().await.as_ref().unwrap().clone();
     let (res, session, msg_stream) = actix_ws::handle(&req, stream)?;
 
     // spawn websocket handler (and don't await it) so that the response is returned immediately

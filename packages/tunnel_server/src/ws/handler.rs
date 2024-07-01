@@ -71,7 +71,7 @@ pub async fn chat_ws(
 
                     #[cfg(feature = "base64")]
                     if let Ok(response) = text.try_into() {
-                        chat_server.response(conn_id, response);
+                        chat_server.response(conn_id, response).await;
                         finished = true
                     }
 
@@ -109,7 +109,7 @@ pub async fn chat_ws(
                 Message::Binary(bytes) => {
                     last_heartbeat = Instant::now();
 
-                    chat_server.response(conn_id, bytes.into());
+                    chat_server.response(conn_id, bytes.into()).await;
                 }
 
                 Message::Close(reason) => break reason,
@@ -159,7 +159,7 @@ pub async fn chat_ws(
         };
     };
 
-    chat_server.disconnect(conn_id);
+    chat_server.disconnect(conn_id).await;
 
     // attempt to close connection gracefully
     let _ = session.close(close_reason).await;

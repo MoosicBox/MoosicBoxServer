@@ -279,14 +279,15 @@ async fn handle_request(
         builder.insert_header((key.clone(), value.clone()));
     }
 
-    let tunnel_stream = TunnelStream::new(request_id, rx, abort_token, &|request_id| {
+    let tunnel_stream = TunnelStream::new(request_id, rx, abort_token, &|request_id| async move {
         debug!("Request {request_id} ended");
         CHAT_SERVER_HANDLE
             .read()
-            .unwrap()
+            .await
             .as_ref()
             .unwrap()
-            .request_end(request_id);
+            .request_end(request_id)
+            .await;
     });
 
     match response_type {
@@ -331,8 +332,10 @@ async fn request(
 
     tokio::spawn(async move {
         debug!("Sending server request {request_id}");
-        let chat_server = CHAT_SERVER_HANDLE.read().unwrap().as_ref().unwrap().clone();
-        chat_server.request_start(request_id, tx, headers_tx, abort_token);
+        let chat_server = CHAT_SERVER_HANDLE.read().await.as_ref().unwrap().clone();
+        chat_server
+            .request_start(request_id, tx, headers_tx, abort_token)
+            .await;
 
         log::info!("Awaiting get_connection_id");
         let conn_id = match chat_server.get_connection_id(&client_id).await {
@@ -340,7 +343,7 @@ async fn request(
             Err(err) => {
                 log::info!("Awaited get_connection_id");
                 log::error!("Failed to get connection id for request_id={request_id} client_id={client_id}: {err:?}");
-                chat_server.request_end(request_id);
+                chat_server.request_end(request_id).await;
                 return Err(err);
             }
         };

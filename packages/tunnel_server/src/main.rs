@@ -13,8 +13,8 @@ use std::env;
 use tokio::try_join;
 
 static CHAT_SERVER_HANDLE: once_cell::sync::Lazy<
-    std::sync::RwLock<Option<ws::server::ChatServerHandle>>,
-> = once_cell::sync::Lazy::new(|| std::sync::RwLock::new(None));
+    tokio::sync::RwLock<Option<ws::server::ChatServerHandle>>,
+> = once_cell::sync::Lazy::new(|| tokio::sync::RwLock::new(None));
 
 fn main() -> Result<(), std::io::Error> {
     env_logger::init();
@@ -54,6 +54,8 @@ fn main() -> Result<(), std::io::Error> {
         let (chat_server, server_tx) = ws::server::ChatServer::new();
         let chat_server = tokio::task::spawn(chat_server.run());
 
+        CHAT_SERVER_HANDLE.write().await.replace(server_tx.clone());
+
         let app = move || {
             let cors = Cors::default()
                 .allow_any_origin()
@@ -62,11 +64,6 @@ fn main() -> Result<(), std::io::Error> {
                 .allowed_header(http::header::CONTENT_TYPE)
                 .supports_credentials()
                 .max_age(3600);
-
-            CHAT_SERVER_HANDLE
-                .write()
-                .unwrap()
-                .replace(server_tx.clone());
 
             App::new()
                 .wrap(cors)
@@ -101,10 +98,7 @@ fn main() -> Result<(), std::io::Error> {
                 let resp = http_server.await;
 
                 log::debug!("Shutting down ws server...");
-                CHAT_SERVER_HANDLE
-                    .write()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .take();
+                CHAT_SERVER_HANDLE.write().await.take();
 
                 log::debug!("Shutting down db client...");
                 db::DB.lock().await.take();

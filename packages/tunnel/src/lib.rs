@@ -3,7 +3,7 @@
 use std::{collections::HashMap, fmt::Display, task::Poll, time::SystemTime};
 
 use bytes::Bytes;
-use futures_util::Stream;
+use futures_util::{Future, Stream};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -231,7 +231,7 @@ pub enum TunnelStreamError {
     Aborted,
 }
 
-pub struct TunnelStream<'a> {
+pub struct TunnelStream<'a, F: Future<Output = ()>> {
     start: SystemTime,
     request_id: usize,
     time_to_first_byte: Option<SystemTime>,
@@ -239,18 +239,18 @@ pub struct TunnelStream<'a> {
     byte_count: usize,
     done: bool,
     rx: UnboundedReceiver<TunnelResponse>,
-    on_end: &'a dyn Fn(usize),
+    on_end: &'a dyn Fn(usize) -> F,
     packet_queue: Vec<TunnelResponse>,
     abort_token: CancellationToken,
 }
 
-impl<'a> TunnelStream<'a> {
+impl<'a, F: Future<Output = ()>> TunnelStream<'a, F> {
     pub fn new(
         request_id: usize,
         rx: UnboundedReceiver<TunnelResponse>,
         abort_token: CancellationToken,
-        on_end: &'a impl Fn(usize),
-    ) -> TunnelStream<'a> {
+        on_end: &'a impl Fn(usize) -> F,
+    ) -> TunnelStream<'a, F> {
         TunnelStream {
             start: SystemTime::now(),
             request_id,
@@ -266,8 +266,8 @@ impl<'a> TunnelStream<'a> {
     }
 }
 
-fn return_polled_bytes(
-    stream: &mut TunnelStream,
+fn return_polled_bytes<F: Future<Output = ()>>(
+    stream: &mut TunnelStream<F>,
     response: TunnelResponse,
 ) -> std::task::Poll<Option<Result<Bytes, TunnelStreamError>>> {
     if stream.time_to_first_byte.is_none() {
@@ -293,7 +293,7 @@ fn return_polled_bytes(
     Poll::Ready(Some(Ok(response.bytes)))
 }
 
-impl Stream for TunnelStream<'_> {
+impl<F: Future<Output = ()>> Stream for TunnelStream<'_, F> {
     type Item = Result<Bytes, TunnelStreamError>;
 
     fn poll_next(
