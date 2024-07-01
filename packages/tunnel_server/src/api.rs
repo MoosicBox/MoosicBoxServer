@@ -247,8 +247,7 @@ async fn handle_request(
         payload,
         headers,
         abort_token.clone(),
-    )
-    .await?;
+    )?;
     log::info!("Awaited request");
 
     let mut builder = HttpResponse::Ok();
@@ -309,7 +308,7 @@ async fn handle_request(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn request(
+fn request(
     client_id: &str,
     request_id: usize,
     method: &Method,
