@@ -278,9 +278,9 @@ impl ChatServer {
                         res_tx,
                         sender,
                     } => {
-                        log::info!("Awaiting Connect ctx");
+                        log::info!("Awaiting ctx write Connect");
                         let mut binding = ctx.write().await;
-                        log::info!("Awaited Connect ctx");
+                        log::info!("Awaited ctx write Connect");
                         log::info!("Awaiting connect");
                         let response = binding.connect(client_id, sender, conn_tx).await;
                         log::info!("Awaited connect");
@@ -297,9 +297,9 @@ impl ChatServer {
                     }
 
                     Command::Disconnect { conn } => {
-                        log::info!("Awaiting Disconnect ctx");
+                        log::info!("Awaiting ctx write Disconnect ctx");
                         let mut binding = ctx.write().await;
-                        log::info!("Awaited Disconnect ctx");
+                        log::info!("Awaited ctx write Disconnect ctx");
                         log::info!("Awaiting disconnect");
                         let response = binding.disconnect(conn).await;
                         log::info!("Awaited disconnect");
@@ -315,9 +315,9 @@ impl ChatServer {
                         headers_sender,
                         abort_request_token,
                     } => {
-                        log::info!("Awaiting RequestStart ctx");
+                        log::info!("Awaiting ctx write RequestStart ctx");
                         let mut ctx = ctx.write().await;
-                        log::info!("Awaited RequestStart ctx");
+                        log::info!("Awaited ctx write RequestStart ctx");
                         ctx.senders.insert(request_id, sender);
                         ctx.headers_senders.insert(request_id, headers_sender);
                         ctx.abort_request_tokens
@@ -326,9 +326,9 @@ impl ChatServer {
                     }
 
                     Command::RequestEnd { request_id } => {
-                        log::info!("Awaiting RequestEnd ctx");
+                        log::info!("Awaiting ctx write RequestEnd ctx");
                         let mut ctx = ctx.write().await;
-                        log::info!("Awaited RequestEnd ctx");
+                        log::info!("Awaited ctx write RequestEnd ctx");
                         ctx.senders.remove(&request_id);
                         ctx.headers_senders.remove(&request_id);
                         ctx.abort_request_tokens.remove(&request_id);
@@ -340,9 +340,9 @@ impl ChatServer {
 
                         if let (Some(status), Some(headers)) = (response.status, &response.headers)
                         {
-                            log::info!("Awaiting Response ctx");
+                            log::info!("Awaiting ctx write Response ctx");
                             let mut ctx = ctx.write().await;
-                            log::info!("Awaited Response ctx");
+                            log::info!("Awaited ctx write Response ctx");
                             let headers_senders = ctx.headers_senders.remove(&request_id);
                             if let Some(sender) = headers_senders {
                                 if sender
@@ -379,9 +379,9 @@ impl ChatServer {
                             if let Some(sender) = senderrr {
                                 if sender.send(response).is_err() {
                                     log::debug!("Sender dropped for request {}", request_id);
-                                    log::info!("Awaiting WsRequest ctx write");
+                                    log::info!("Awaiting ctx write WsRequest ctx write");
                                     let mut binding = ctx.write().await;
-                                    log::info!("Awaited WsRequest ctx write");
+                                    log::info!("Awaited ctx write WsRequest ctx write");
                                     binding.senders.remove(&request_id);
                                     drop(binding);
                                     log::info!("Awaiting abort_request");
@@ -438,9 +438,9 @@ impl ChatServer {
                                         "Failed to send WsRequest to {client_conn_id}: {error:?}"
                                     );
                                 }
-                                log::info!("Awaiting WsRequest ctx write");
+                                log::info!("Awaiting ctx write WsRequest ctx write");
                                 let mut binding = ctx.write().await;
-                                log::info!("Awaited WsRequest ctx write");
+                                log::info!("Awaited ctx write WsRequest ctx write");
                                 binding.ws_requests.insert(request_id, conn_id);
                                 drop(binding);
                             }
