@@ -237,6 +237,7 @@ async fn handle_request(
 
     debug!("Starting ws request for {request_id} method={method} path={path} query={query:?} headers={headers:?} (id {request_id})");
 
+    log::info!("Awaiting request");
     let (headers_rx, rx) = request(
         client_id,
         request_id,
@@ -248,18 +249,22 @@ async fn handle_request(
         abort_token.clone(),
     )
     .await?;
+    log::info!("Awaited request");
 
     let mut builder = HttpResponse::Ok();
 
+    log::info!("Awaiting headers_rx");
     let headers = match headers_rx.await {
         Ok(headers) => headers,
         Err(err) => {
+            log::info!("Awaited headers_rx");
             log::error!(
                 "Failed to receive headers for request_id={request_id} client_id={client_id} ({err:?})"
             );
             return Err(ErrorFailedDependency("Client with ID is not connected"));
         }
     };
+    log::info!("Awaited headers_rx");
 
     let response_type = ResponseType::Stream;
 
@@ -287,6 +292,7 @@ async fn handle_request(
     match response_type {
         ResponseType::Stream => Ok(builder.streaming(tunnel_stream)),
         ResponseType::Body => {
+            log::info!("Awaiting tunnel_stream body");
             let body: Vec<_> = tunnel_stream
                 .collect::<Vec<_>>()
                 .await
@@ -294,6 +300,7 @@ async fn handle_request(
                 .filter_map(|bytes| bytes.ok())
                 .flatten()
                 .collect();
+            log::info!("Awaited tunnel_stream body");
 
             Ok(builder.body(body))
         }
@@ -327,16 +334,20 @@ async fn request(
         let chat_server = CHAT_SERVER_HANDLE.read().unwrap().as_ref().unwrap().clone();
         chat_server.request_start(request_id, tx, headers_tx, abort_token);
 
+        log::info!("Awaiting get_connection_id");
         let conn_id = match chat_server.get_connection_id(&client_id).await {
             Ok(conn_id) => conn_id,
             Err(err) => {
+                log::info!("Awaited get_connection_id");
                 log::error!("Failed to get connection id for request_id={request_id} client_id={client_id}: {err:?}");
                 chat_server.request_end(request_id);
                 return Err(err);
             }
         };
+        log::info!("Awaited get_connection_id");
 
         debug!("Sending server request {request_id} to {conn_id}");
+        log::info!("Awaiting send_message");
         chat_server
             .send_message(
                 conn_id,
@@ -353,6 +364,7 @@ async fn request(
                 .to_string(),
             )
             .await;
+        log::info!("Awaited send_message");
         debug!("Sent server request {request_id} to {conn_id}");
         Ok::<_, ConnectionIdError>(())
     });
