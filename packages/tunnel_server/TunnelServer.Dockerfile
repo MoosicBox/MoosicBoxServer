@@ -49,7 +49,7 @@ RUN mkdir packages/tunnel_server/src && \
 
 ARG TUNNEL_ACCESS_TOKEN
 ENV TUNNEL_ACCESS_TOKEN=${TUNNEL_ACCESS_TOKEN}
-ENV RUST_LOG=info,moosicbox=debug,moosicbox_middleware::api_logger=trace
+ENV RUST_LOG=info,moosicbox=trace
 RUN cargo build --package moosicbox_tunnel_server --release --no-default-features --features postgres-raw,postgres-native-tls
 
 COPY packages packages
@@ -66,7 +66,7 @@ RUN apt-get update && apt-get install -y ca-certificates curl
 
 COPY --from=builder /app/target/release/moosicbox_tunnel_server /
 EXPOSE 8004
-ENV RUST_LOG=info,moosicbox=debug,moosicbox_middleware::api_logger=trace
+ENV RUST_LOG=info,moosicbox=trace
 ENV MAX_THREADS=64
 ENV ACTIX_WORKERS=32
 ARG AWS_ACCESS_KEY_ID
