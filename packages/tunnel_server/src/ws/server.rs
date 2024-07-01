@@ -375,7 +375,8 @@ impl ChatServer {
                             log::info!("Awaiting ctx read senders");
                             let binding = ctx.read().await;
                             log::info!("Awaited ctx read senders");
-                            let senderrr = binding.senders.get(&request_id);
+                            let senderrr = binding.senders.get(&request_id).cloned();
+                            drop(binding);
                             if let Some(sender) = senderrr {
                                 if sender.send(response).is_err() {
                                     log::debug!("Sender dropped for request {}", request_id);
